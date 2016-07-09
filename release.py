@@ -1,18 +1,14 @@
 # import GPIO library that includes the pulse width function
-
 import RPi.GPIO as GPIO
 import time
 
-# import json library
-
+# import json library to parse messages
 import json
 
 # import boto library that handles queuing functions
-
 import boto.sqs
 
-# connect to queue
-
+# connect to queue that will have incoming requests
 conn = boto.sqs.connect_to_region("us-east-1")
 my_queue = conn.get_queue('talkWithPitcher')
 
@@ -20,50 +16,47 @@ print 'queue name'
 print my_queue
 
 # check queue to see if a request exists 
-
 incomingMsgs = my_queue.get_messages()
 
 # if length is zero, nothing to do
+if len(incomingMsgs) > 0:
+    print 'time to process messages'
 
-print len(incomingMsgs)
+    # read messages
+    for incomingMsg in incomingMsgs:
+        msg = json.loads(incomingMsg.get_body())
+        print msg['request']['action']
 
-# read messages
+    # set parameters for servo action
+    elbow_pin = 18
+    elbow_range = 11
+    elbow_start_pos = 10
 
-for incomingMsg in incomingMsgs:
-    print incomingMsg.get_body()
+    speed = 0.1
+    frequency = 60
 
-# set parameters
+    # setup GPIO pins for servos
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setwarnings(False)
+    GPIO.setup(elbow_pin, GPIO.OUT)
 
-elbow_pin = 18
-elbow_range = 11
-elbow_start_pos = 10
+    print "Setup Complete"
 
-speed = 0.1
-frequency = 60
+    servo1 = GPIO.PWM(elbow_pin, frequency)
+    servo1.start(elbow_start_pos)
 
-# setup GPIO pins for servos
+    print "Load Ball"
 
-GPIO.setmode(GPIO.BCM)
-GPIO.setwarnings(False)
-GPIO.setup(elbow_pin, GPIO.OUT)
+    # this loop is the arc of throwing motion
+    for x in range(0, elbow_range):
+      duty1 = elbow_start_pos - (float(x * 5) / 10.0)
+      servo1.ChangeDutyCycle(duty1)
+      time.sleep(speed)
+      print duty1
 
-print "Setup Complete"
+    print "Stop Throwing Movement"
 
-servo1 = GPIO.PWM(elbow_pin, frequency)
-servo1.start(elbow_start_pos)
+    time.sleep(1)
+    servo1.stop()
 
-print "Load Ball"
-
-# this loop is the arc of throwing motion
-for x in range(0, elbow_range):
-  duty1 = elbow_start_pos - (float(x * 5) / 10.0)
-  servo1.ChangeDutyCycle(duty1)
-  time.sleep(speed)
-  print duty1
-
-print "Stop Throwing Movement"
-
-time.sleep(1)
-servo1.stop()
-
-GPIO.cleanup()
+    GPIO.cleanup()
