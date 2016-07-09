@@ -3,6 +3,35 @@
 import RPi.GPIO as GPIO
 import time
 
+# import json library
+
+import json
+
+# import boto library that handles queuing functions
+
+import boto.sqs
+
+# connect to queue
+
+conn = boto.sqs.connect_to_region("us-east-1")
+my_queue = conn.get_queue('talkWithPitcher')
+
+print 'queue name'
+print my_queue
+
+# check queue to see if a request exists 
+
+incomingMsgs = my_queue.get_messages()
+
+# if length is zero, nothing to do
+
+print len(incomingMsgs)
+
+# read messages
+
+for incomingMsg in incomingMsgs:
+    print incomingMsg.get_body()
+
 # set parameters
 
 elbow_pin = 18
